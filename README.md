@@ -15,14 +15,14 @@ pip install scmetabolism
 ### GitHub에서 개발 버전 설치
 
 ```bash
-pip install git+https://github.com/your-username/scMetabolism-python.git
+pip install git+https://github.com/lemonardo1/scMetabolism.git
 ```
 
 ### 로컬 개발 설치
 
 ```bash
-git clone https://github.com/your-username/scMetabolism-python.git
-cd scMetabolism-python
+git clone https://github.com/lemonardo1/scMetabolism.git
+cd scMetabolism
 pip install -e .
 ```
 
@@ -225,7 +225,7 @@ Cancer Discovery. 2021.
 
 ## 📞 문의
 
-- **기술적 문의**: [GitHub Issues](https://github.com/your-username/scMetabolism-python/issues)
+- **기술적 문의**: [GitHub Issues](https://github.com/lemonardo1/scMetabolism/issues)
 - **이메일**: gaoqiang@fudan.edu.cn
 
 ## 🙏 감사의 말
