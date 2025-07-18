@@ -8,6 +8,19 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from typing import Optional, List, Union, Tuple
 import warnings
+try:
+    import plotly.graph_objects as go
+    import plotly.express as px
+    from plotly.subplots import make_subplots
+    PLOTLY_AVAILABLE = True
+except ImportError:
+    PLOTLY_AVAILABLE = False
+    
+try:
+    import scanpy as sc
+    SCANPY_AVAILABLE = True
+except ImportError:
+    SCANPY_AVAILABLE = False
 
 
 class MetabolismPlotter:
@@ -378,5 +391,352 @@ class MetabolismPlotter:
         ax.set_ylabel('Pathways')
         
         plt.tight_layout()
+        
+        return fig    
+ 
+   def interactive_dim_plot(
+        self,
+        embedding: pd.DataFrame,
+        metabolism_scores: pd.DataFrame,
+        pathway: str,
+        metadata: Optional[pd.DataFrame] = None,
+        color_by: Optional[str] = None,
+        embedding_type: str = "umap",
+        size: int = 5,
+        width: int = 800,
+        height: int = 600
+    ):
+        """
+        Create interactive dimension reduction plot using Plotly.
+        
+        Parameters:
+        -----------
+        embedding : pd.DataFrame
+            2D embedding coordinates
+        metabolism_scores : pd.DataFrame
+            Metabolism scores
+        pathway : str
+            Pathway to visualize
+        metadata : pd.DataFrame, optional
+            Cell metadata for additional coloring
+        color_by : str, optional
+            Column in metadata to color by
+        embedding_type : str
+            Type of embedding
+        size : int
+            Point size
+        width, height : int
+            Plot dimensions
+            
+        Returns:
+        --------
+        plotly.graph_objects.Figure or None
+            Interactive plot (if plotly available)
+        """
+        
+        if not PLOTLY_AVAILABLE:
+            warnings.warn("Plotly not available. Install with: pip install plotly")
+            return None
+            
+        if pathway not in metabolism_scores.index:
+            raise ValueError(f"Pathway '{pathway}' not found in metabolism scores")
+        
+        # Align data
+        common_cells = embedding.index.intersection(metabolism_scores.columns)
+        embedding_aligned = embedding.loc[common_cells]
+        pathway_scores = metabolism_scores.loc[pathway, common_cells]
+        
+        # Prepare data for plotting
+        plot_data = pd.DataFrame({
+            f'{embedding_type.upper()}_1': embedding_aligned.iloc[:, 0],
+            f'{embedding_type.upper()}_2': embedding_aligned.iloc[:, 1],
+            'Metabolism_Score': pathway_scores,
+            'Cell_ID': common_cells
+        })
+        
+        # Add metadata if provided
+        if metadata is not None and color_by is not None:
+            if color_by in metadata.columns:
+                metadata_aligned = metadata.loc[common_cells]
+                plot_data[color_by] = metadata_aligned[color_by]
+                color_column = color_by
+            else:
+                warnings.warn(f"Column '{color_by}' not found in metadata")
+                color_column = 'Metabolism_Score'
+        else:
+            color_column = 'Metabolism_Score'
+        
+        # Create interactive plot
+        fig = px.scatter(
+            plot_data,
+            x=f'{embedding_type.upper()}_1',
+            y=f'{embedding_type.upper()}_2',
+            color=color_column,
+            hover_data=['Cell_ID', 'Metabolism_Score'],
+            title=f'{pathway} - {embedding_type.upper()} Plot',
+            width=width,
+            height=height
+        )
+        
+        fig.update_traces(marker=dict(size=size))
+        fig.update_layout(
+            xaxis_title=f'{embedding_type.upper()} 1',
+            yaxis_title=f'{embedding_type.upper()} 2'
+        )
+        
+        return fig
+    
+    def interactive_heatmap(
+        self,
+        metabolism_scores: pd.DataFrame,
+        pathways: Optional[List[str]] = None,
+        cells: Optional[List[str]] = None,
+        metadata: Optional[pd.DataFrame] = None,
+        width: int = 1000,
+        height: int = 800
+    ):
+        """
+        Create interactive heatmap using Plotly.
+        
+        Parameters:
+        -----------
+        metabolism_scores : pd.DataFrame
+            Metabolism scores
+        pathways : List[str], optional
+            Subset of pathways
+        cells : List[str], optional
+            Subset of cells
+        metadata : pd.DataFrame, optional
+            Cell metadata for annotations
+        width, height : int
+            Plot dimensions
+            
+        Returns:
+        --------
+        plotly.graph_objects.Figure or None
+            Interactive heatmap
+        """
+        
+        if not PLOTLY_AVAILABLE:
+            warnings.warn("Plotly not available. Install with: pip install plotly")
+            return None
+        
+        # Subset data
+        plot_data = metabolism_scores.copy()
+        
+        if pathways is not None:
+            pathways = [p for p in pathways if p in plot_data.index]
+            plot_data = plot_data.loc[pathways]
+        
+        if cells is not None:
+            cells = [c for c in cells if c in plot_data.columns]
+            plot_data = plot_data.loc[:, cells]
+        
+        # Create heatmap
+        fig = go.Figure(data=go.Heatmap(
+            z=plot_data.values,
+            x=plot_data.columns,
+            y=plot_data.index,
+            colorscale='Viridis',
+            hovertemplate='Pathway: %{y}<br>Cell: %{x}<br>Score: %{z}<extra></extra>'
+        ))
+        
+        fig.update_layout(
+            title='Interactive Metabolism Heatmap',
+            xaxis_title='Cells',
+            yaxis_title='Pathways',
+            width=width,
+            height=height
+        )
+        
+        return fig
+    
+    def pathway_network_plot(
+        self,
+        metabolism_scores: pd.DataFrame,
+        correlation_threshold: float = 0.5,
+        layout: str = "spring",
+        node_size_col: Optional[str] = None,
+        width: int = 800,
+        height: int = 600
+    ):
+        """
+        Create pathway correlation network plot.
+        
+        Parameters:
+        -----------
+        metabolism_scores : pd.DataFrame
+            Metabolism scores
+        correlation_threshold : float
+            Minimum correlation to show edge
+        layout : str
+            Network layout algorithm
+        node_size_col : str, optional
+            Column to determine node size
+        width, height : int
+            Plot dimensions
+            
+        Returns:
+        --------
+        plotly.graph_objects.Figure or None
+            Network plot
+        """
+        
+        if not PLOTLY_AVAILABLE:
+            warnings.warn("Plotly not available. Install with: pip install plotly")
+            return None
+        
+        # Calculate pathway correlations
+        corr_matrix = metabolism_scores.T.corr()
+        
+        # Create network edges
+        edges = []
+        edge_weights = []
+        
+        for i, pathway1 in enumerate(corr_matrix.index):
+            for j, pathway2 in enumerate(corr_matrix.columns):
+                if i < j:  # Avoid duplicates
+                    corr_val = corr_matrix.loc[pathway1, pathway2]
+                    if abs(corr_val) >= correlation_threshold:
+                        edges.append((pathway1, pathway2))
+                        edge_weights.append(corr_val)
+        
+        if len(edges) == 0:
+            warnings.warn("No correlations above threshold found")
+            return None
+        
+        # Create network layout (simplified)
+        import networkx as nx
+        
+        G = nx.Graph()
+        G.add_weighted_edges_from([(e[0], e[1], w) for e, w in zip(edges, edge_weights)])
+        
+        if layout == "spring":
+            pos = nx.spring_layout(G)
+        elif layout == "circular":
+            pos = nx.circular_layout(G)
+        else:
+            pos = nx.random_layout(G)
+        
+        # Create plotly network
+        edge_x = []
+        edge_y = []
+        
+        for edge in G.edges():
+            x0, y0 = pos[edge[0]]
+            x1, y1 = pos[edge[1]]
+            edge_x.extend([x0, x1, None])
+            edge_y.extend([y0, y1, None])
+        
+        edge_trace = go.Scatter(
+            x=edge_x, y=edge_y,
+            line=dict(width=0.5, color='#888'),
+            hoverinfo='none',
+            mode='lines'
+        )
+        
+        node_x = []
+        node_y = []
+        node_text = []
+        
+        for node in G.nodes():
+            x, y = pos[node]
+            node_x.append(x)
+            node_y.append(y)
+            node_text.append(node)
+        
+        node_trace = go.Scatter(
+            x=node_x, y=node_y,
+            mode='markers+text',
+            hoverinfo='text',
+            text=node_text,
+            textposition="middle center",
+            marker=dict(
+                size=10,
+                color='lightblue',
+                line=dict(width=2, color='black')
+            )
+        )
+        
+        fig = go.Figure(data=[edge_trace, node_trace],
+                       layout=go.Layout(
+                           title='Pathway Correlation Network',
+                           titlefont_size=16,
+                           showlegend=False,
+                           hovermode='closest',
+                           margin=dict(b=20,l=5,r=5,t=40),
+                           annotations=[ dict(
+                               text=f"Correlation threshold: {correlation_threshold}",
+                               showarrow=False,
+                               xref="paper", yref="paper",
+                               x=0.005, y=-0.002,
+                               xanchor="left", yanchor="bottom",
+                               font=dict(size=12)
+                           )],
+                           xaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
+                           yaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
+                           width=width,
+                           height=height
+                       ))
+        
+        return fig
+    
+    def scanpy_integration_plot(
+        self,
+        adata,
+        pathway: str,
+        basis: str = "umap",
+        layer: Optional[str] = None,
+        **kwargs
+    ):
+        """
+        Create scanpy-style plots for metabolism scores.
+        
+        Parameters:
+        -----------
+        adata : AnnData
+            Annotated data object with metabolism scores
+        pathway : str
+            Pathway to visualize
+        basis : str
+            Embedding basis to use
+        layer : str, optional
+            Layer to use
+        **kwargs
+            Additional arguments for scanpy plotting
+            
+        Returns:
+        --------
+        matplotlib figure or None
+        """
+        
+        if not SCANPY_AVAILABLE:
+            warnings.warn("Scanpy not available. Install with: pip install scanpy")
+            return None
+        
+        if 'metabolism' not in adata.obsm:
+            raise ValueError("No metabolism scores found in adata.obsm['metabolism']")
+        
+        # Add pathway score to obs for plotting
+        metabolism_df = pd.DataFrame(
+            adata.obsm['metabolism'],
+            index=adata.obs_names,
+            columns=adata.uns['metabolism_pathways']
+        )
+        
+        if pathway not in metabolism_df.columns:
+            raise ValueError(f"Pathway '{pathway}' not found in metabolism scores")
+        
+        adata.obs[f'metabolism_{pathway}'] = metabolism_df[pathway]
+        
+        # Create scanpy plot
+        fig = sc.pl.embedding(
+            adata,
+            basis=basis,
+            color=f'metabolism_{pathway}',
+            title=f'{pathway}',
+            return_fig=True,
+            **kwargs
+        )
         
         return fig

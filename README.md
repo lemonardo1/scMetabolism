@@ -35,15 +35,29 @@ pip install -e .
 - scikit-learn >= 0.24.0
 - matplotlib >= 3.3.0
 - seaborn >= 0.11.0
+- numba >= 0.56.0 (성능 최적화)
+- networkx >= 2.6.0 (네트워크 분석)
+- pyyaml >= 5.4.0 (설정 관리)
 
 ### 선택적 패키지
 ```bash
-# Scanpy 지원
+# Scanpy 지원 (AnnData 객체 사용)
 pip install "scmetabolism[scanpy]"
 
-# 모든 기능
+# 인터랙티브 시각화 (Plotly)
+pip install "scmetabolism[plotly]"
+
+# 모든 기능 (권장)
 pip install "scmetabolism[all]"
+
+# 개발자 도구
+pip install "scmetabolism[dev]"
 ```
+
+### 시스템 요구사항
+- Python 3.7 이상
+- 메모리: 최소 4GB (대용량 데이터의 경우 8GB 이상 권장)
+- 디스크 공간: 1GB (GO 데이터베이스 캐시 포함)
 
 ## 🔬 빠른 시작
 
@@ -149,6 +163,62 @@ fig = plotter.box_plot(
 
 ## 🔧 고급 사용법
 
+### 데이터 품질 관리
+
+```python
+from scmetabolism import DataValidator, QualityMetrics
+
+# 데이터 검증
+validator = DataValidator()
+validation_results = validator.validate_count_matrix(
+    count_matrix,
+    min_genes_per_cell=200,
+    min_cells_per_gene=3,
+    max_mito_percent=20.0
+)
+
+# 검증 결과 시각화
+validator.plot_validation_summary()
+
+# 품질 지표 계산
+quality_metrics = QualityMetrics.calculate_score_quality(metabolism_scores)
+```
+
+### 성능 최적화
+
+```python
+from scmetabolism import SparseMatrixHandler, MemoryOptimizer, BatchProcessor
+
+# 희소 행렬 처리
+sparse_handler = SparseMatrixHandler()
+sparse_matrix = sparse_handler.to_sparse(count_matrix, threshold=0.7)
+
+# 메모리 최적화
+optimizer = MemoryOptimizer()
+optimized_df = optimizer.optimize_dtypes(count_matrix)
+
+# 배치 처리 (대용량 데이터)
+batch_processor = BatchProcessor(batch_size=5000)
+results = batch_processor.process_cells_in_batches(count_matrix, processing_func)
+```
+
+### 설정 관리
+
+```python
+from scmetabolism import get_config, set_config_value
+
+# 기본 설정 확인
+config = get_config()
+print(f"기본 방법: {config.get('analysis.default_method')}")
+
+# 설정 변경
+set_config_value('analysis.default_method', 'ssgsea')
+set_config_value('visualization.default_colormap', 'plasma')
+
+# 설정 저장
+config.save_config()
+```
+
 ### 데이터 전처리
 
 ```python
@@ -169,6 +239,34 @@ processed_matrix = preprocess_data(
 from scmetabolism.utils import alra_imputation
 
 imputed_matrix = alra_imputation(count_matrix, k=50)
+```
+
+### 인터랙티브 시각화
+
+```python
+# Plotly 기반 인터랙티브 플롯
+interactive_fig = plotter.interactive_dim_plot(
+    embedding=umap_coords,
+    metabolism_scores=metabolism_scores,
+    pathway="Glycolysis / Gluconeogenesis",
+    metadata=cell_metadata,
+    color_by="cell_type"
+)
+interactive_fig.show()
+
+# 네트워크 플롯
+network_fig = plotter.pathway_network_plot(
+    metabolism_scores=metabolism_scores,
+    correlation_threshold=0.5
+)
+network_fig.show()
+
+# 인터랙티브 히트맵
+heatmap_fig = plotter.interactive_heatmap(
+    metabolism_scores=metabolism_scores,
+    pathways=pathways_of_interest
+)
+heatmap_fig.show()
 ```
 
 ### Gene Ontology (GO) 분석
@@ -215,6 +313,25 @@ custom_gene_sets = {
 
 sc_metab.gene_sets = custom_gene_sets
 scores = sc_metab._compute_aucell(count_matrix, n_cores=2)
+```
+
+## 🖥️ 명령줄 인터페이스 (CLI)
+
+scMetabolism은 명령줄에서도 사용할 수 있습니다:
+
+```bash
+# 기본 분석
+scmetabolism analyze --input data.csv --output results/ --method aucell
+
+# GO 분석
+scmetabolism analyze --input data.csv --gene-sets GO_metabolism --output results/
+
+# 품질 관리
+scmetabolism qc --input data.csv --output qc_report.html
+
+# 설정 관리
+scmetabolism config --show
+scmetabolism config --set analysis.default_method=ssgsea
 ```
 
 ## 📖 예제

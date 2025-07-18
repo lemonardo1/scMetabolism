@@ -12,6 +12,9 @@ from .core import ScMetabolism
 from .visualization import MetabolismPlotter
 from .utils import load_gene_sets, preprocess_data
 from .go_analysis import GOAnalysis, download_go_gene_sets
+from .quality_control import DataValidator, QualityMetrics
+from .performance import SparseMatrixHandler, MemoryOptimizer, BatchProcessor
+from .config import get_config, set_config_value, get_config_value
 
 __all__ = [
     "ScMetabolism",
@@ -19,5 +22,13 @@ __all__ = [
     "load_gene_sets",
     "preprocess_data",
     "GOAnalysis",
-    "download_go_gene_sets"
+    "download_go_gene_sets",
+    "DataValidator",
+    "QualityMetrics",
+    "SparseMatrixHandler",
+    "MemoryOptimizer", 
+    "BatchProcessor",
+    "get_config",
+    "set_config_value",
+    "get_config_value"
 ]

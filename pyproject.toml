@@ -39,6 +39,9 @@ dependencies = [
     "seaborn>=0.11.0",
     "requests>=2.25.0",
     "goatools>=1.2.0",
+    "numba>=0.56.0",
+    "networkx>=2.6.0",
+    "pyyaml>=5.4.0",
 ]
 
 [project.optional-dependencies]
@@ -60,10 +63,13 @@ all = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/wu-yc/scMetabolism"
-Repository = "https://github.com/wu-yc/scMetabolism"
-Documentation = "https://github.com/wu-yc/scMetabolism"
-"Bug Tracker" = "https://github.com/wu-yc/scMetabolism/issues"
+Homepage = "https://github.com/lemonardo1/scMetabolism"
+Repository = "https://github.com/lemonardo1/scMetabolism"
+Documentation = "https://github.com/lemonardo1/scMetabolism"
+"Bug Tracker" = "https://github.com/lemonardo1/scMetabolism/issues"
+
+[project.scripts]
+scmetabolism = "scmetabolism.cli:main"
 
 [tool.setuptools]
 packages = ["scmetabolism"]
