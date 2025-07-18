@@ -1,0 +1,111 @@
+[build-system]
+requires = ["setuptools>=45", "wheel", "setuptools_scm[toml]>=6.2"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "scmetabolism"
+version = "0.2.1"
+description = "Quantifying the single-cell metabolism activity"
+readme = "README.md"
+license = {text = "GPL-3.0"}
+authors = [
+    {name = "Qiang Gao", email = "gaoqiang@fudan.edu.cn"},
+    {name = "Yingcheng Wu", email = "wuyc@mail.com"}
+]
+maintainers = [
+    {name = "Yingcheng Wu", email = "wuyc@mail.com"}
+]
+keywords = ["single-cell", "metabolism", "bioinformatics", "genomics"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.7",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Topic :: Scientific/Engineering :: Bio-Informatics",
+]
+requires-python = ">=3.7"
+dependencies = [
+    "numpy>=1.19.0",
+    "pandas>=1.2.0",
+    "scipy>=1.6.0",
+    "scikit-learn>=0.24.0",
+    "matplotlib>=3.3.0",
+    "seaborn>=0.11.0",
+]
+
+[project.optional-dependencies]
+scanpy = ["scanpy>=1.8.0", "anndata>=0.7.0"]
+gseapy = ["gseapy>=0.10.0"]
+plotly = ["plotly>=5.0.0"]
+dev = [
+    "pytest>=6.0",
+    "pytest-cov>=2.0",
+    "black>=21.0",
+    "flake8>=3.8",
+    "mypy>=0.900",
+]
+all = [
+    "scanpy>=1.8.0",
+    "anndata>=0.7.0", 
+    "gseapy>=0.10.0",
+    "plotly>=5.0.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/wu-yc/scMetabolism"
+Repository = "https://github.com/wu-yc/scMetabolism"
+Documentation = "https://github.com/wu-yc/scMetabolism"
+"Bug Tracker" = "https://github.com/wu-yc/scMetabolism/issues"
+
+[tool.setuptools]
+packages = ["scmetabolism"]
+include-package-data = true
+
+[tool.setuptools.package-data]
+scmetabolism = ["data/*.gmt"]
+
+[tool.black]
+line-length = 88
+target-version = ['py37', 'py38', 'py39', 'py310']
+include = '\.pyi?$'
+extend-exclude = '''
+/(
+  # directories
+  \.eggs
+  | \.git
+  | \.hg
+  | \.mypy_cache
+  | \.tox
+  | \.venv
+  | build
+  | dist
+)/
+'''
+
+[tool.mypy]
+python_version = "3.7"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+disallow_untyped_decorators = true
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_no_return = true
+warn_unreachable = true
+strict_equality = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = "--cov=scmetabolism --cov-report=html --cov-report=term-missing"

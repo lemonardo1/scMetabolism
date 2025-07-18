@@ -1,143 +1,237 @@
 # scMetabolism
-`scMetabolism` is a R package for quantifying metabolism activity at the single-cell resolution
-![Screenshot](https://github.com/wu-yc/scMetabolism/raw/main/logo.jpg)
 
-## Requirements
-    install.packages(c("devtools", "data.table", "wesanderson", "Seurat", "devtools", "AUCell", "GSEABase", "GSVA", "ggplot2","rsvd"))
-    devtools::install_github("YosefLab/VISION@v2.1.0") #Please note that the version would be v2.1.0
-    
+`scMetabolism`은 단일 세포 해상도에서 대사 활동을 정량화하는 Python 패키지입니다.
 
-## Install
-    devtools::install_github("wu-yc/scMetabolism")
+![Screenshot](logo.jpg)
 
-## Quick Start
-`scMetabolism` generally supports the quantification and visualization of metabolism at the single-cell resolution. 
+## 🚀 설치
 
-`scMetabolism` currently supports human scRNA-seq data.
+### PyPI에서 설치 (권장)
 
+```bash
+pip install scmetabolism
+```
 
-### 1. Load packages and demo data
-The demo data is the dataset of Peripheral Blood Mononuclear Cells (PBMC) from 10X Genomics open access dataset (~2,700 single cells, also used by Seurat tutorial). The demo Seurat object can be downloaded from [here](https://figshare.com/articles/dataset/scMetabolism_-_pbmc_demo_rda/13670038).
+### GitHub에서 개발 버전 설치
 
+```bash
+pip install git+https://github.com/your-username/scMetabolism-python.git
+```
 
-    load(file = "pbmc_demo.rda")
-    
-    library(scMetabolism)
-    library(ggplot2)
-    library(rsvd)
+### 로컬 개발 설치
 
+```bash
+git clone https://github.com/your-username/scMetabolism-python.git
+cd scMetabolism-python
+pip install -e .
+```
+
+## 📋 필요 패키지
+
+### 필수 패키지
+- numpy >= 1.19.0
+- pandas >= 1.2.0
+- scipy >= 1.6.0
+- scikit-learn >= 0.24.0
+- matplotlib >= 3.3.0
+- seaborn >= 0.11.0
+
+### 선택적 패키지
+```bash
+# Scanpy 지원
+pip install "scmetabolism[scanpy]"
+
+# 모든 기능
+pip install "scmetabolism[all]"
+```
+
+## 🔬 빠른 시작
 
-### 2. Quantify single-cell metabolism with Seurat (Recommended)
-    countexp.Seurat<-sc.metabolism.Seurat(obj = countexp.Seurat, method = "AUCell", imputation = F, ncores = 2, metabolism.type = "KEGG")
+### 1. 기본 사용법
 
-`obj` is a Seurat object containing the UMI count matrix. 
+```python
+import pandas as pd
+import numpy as np
+from scmetabolism import ScMetabolism, MetabolismPlotter
+
+# 데이터 로드 (genes x cells 형태의 count matrix)
+count_matrix = pd.read_csv("your_count_matrix.csv", index_col=0)
+
+# ScMetabolism 객체 생성
+sc_metab = ScMetabolism()
 
-`method` supports `VISION`, `AUCell`, `ssgsea`, and `gsva`, which VISION is the default method.
+# 대사 점수 계산
+metabolism_scores = sc_metab.compute_metabolism(
+    count_matrix=count_matrix,
+    method="aucell",  # "aucell", "ssgsea", "gsva" 중 선택
+    imputation=False,  # ALRA imputation 사용 여부
+    n_cores=2,
+    metabolism_type="KEGG"  # "KEGG" 또는 "REACTOME"
+)
 
-`imputation` allows users to choose whether impute their data before metabolism scoring.
+print(f"계산된 대사 경로 수: {metabolism_scores.shape[0]}")
+print(f"분석된 세포 수: {metabolism_scores.shape[1]}")
+```
+
+### 2. Scanpy/AnnData와 함께 사용
 
-`ncores` is the number of threads of parallel computation.
+```python
+import scanpy as sc
+import anndata as ad
 
-`metabolism.type` supports `KEGG` and `REACTOME`, where KEGG contains 85 metabolism pathways and REACTOME contains 82 metabolism pathways.
+# AnnData 객체로 작업
+adata = sc.read_h5ad("your_data.h5ad")
 
-To extract the metabolism score, just run `metabolism.matrix <- countexp.Seurat@assays$METABOLISM$score`, where `metabolism.matrix` is the matrix.
+# 대사 점수 계산 및 AnnData에 추가
+adata = sc_metab.compute_metabolism_scanpy(
+    adata=adata,
+    method="aucell",
+    metabolism_type="KEGG"
+)
 
-### 3. Visualize 
-#### Dimplot
+# 결과는 adata.obsm['metabolism']에 저장됩니다
+print("대사 점수가 adata.obsm['metabolism']에 저장되었습니다")
+```
 
-    DimPlot.metabolism(obj = countexp.Seurat, pathway = "Glycolysis / Gluconeogenesis", dimention.reduction.type = "umap", dimention.reduction.run = F, size = 1)
+### 3. 시각화
 
-`countexp.Seurat` is a Seurat object containing the UMI count matrix. 
+```python
+# 시각화 객체 생성
+plotter = MetabolismPlotter()
 
-`pathway` is the pathway of interest to visualize. 
+# 차원 축소 플롯
+fig = plotter.dim_plot(
+    embedding=umap_coords,  # 2D 좌표 (cells x 2)
+    metabolism_scores=metabolism_scores,
+    pathway="Glycolysis / Gluconeogenesis",
+    embedding_type="umap"
+)
+
+# 도트 플롯
+pathways_of_interest = [
+    "Glycolysis / Gluconeogenesis",
+    "Oxidative phosphorylation", 
+    "Citrate cycle (TCA cycle)"
+]
+
+fig = plotter.dot_plot(
+    metabolism_scores=metabolism_scores,
+    metadata=cell_metadata,
+    pathways=pathways_of_interest,
+    group_by="cell_type"
+)
+
+# 박스 플롯
+fig = plotter.box_plot(
+    metabolism_scores=metabolism_scores,
+    metadata=cell_metadata,
+    pathways=pathways_of_interest,
+    group_by="cell_type"
+)
+```
 
-`dimention.reduction.type` supports `umap` and `tsne`.
+## 📊 지원하는 방법론
 
-`dimention.reduction.run` allows users to choose whether re-run the dimention reduction of the given Seurat object.
+### 점수 계산 방법
+- **AUCell**: Area Under the Curve 기반 방법 (권장)
+- **ssGSEA**: Single-sample Gene Set Enrichment Analysis  
+- **GSVA**: Gene Set Variation Analysis
 
-`size` is the dot size in the plot.
+### 유전자 세트
+- **KEGG**: 85개 대사 경로
+- **REACTOME**: 82개 대사 경로
 
-This function returns a ggplot object, which can be DIY by users.
+## 🔧 고급 사용법
 
-![Screenshot](https://github.com/wu-yc/scMetabolism/raw/main/scmetab_dim.png)
+### 데이터 전처리
 
-#### Dot plot
+```python
+from scmetabolism.utils import preprocess_data
 
-    input.pathway<-c("Glycolysis / Gluconeogenesis", "Oxidative phosphorylation", "Citrate cycle (TCA cycle)")
-    DotPlot.metabolism(obj = countexp.Seurat, pathway = input.pathway, phenotype = "ident", norm = "y")
+processed_matrix = preprocess_data(
+    count_matrix=raw_count_matrix,
+    min_genes=200,  # 세포당 최소 유전자 수
+    min_cells=3,    # 유전자당 최소 세포 수
+    normalize=True, # CPM 정규화
+    log_transform=True  # 로그 변환
+)
+```
 
-`obj` is a Seurat object containing the UMI count matrix. 
+### ALRA Imputation
 
-`pathway` is the pathway of interest to visualize. 
+```python
+from scmetabolism.utils import alra_imputation
 
-`phenotype` is the one of the features contained in the metadata in the Seurat object.
+imputed_matrix = alra_imputation(count_matrix, k=50)
+```
 
-`norm` refers to scale the value according to row or column. Users can choose "x", "y", and "na".
+### 사용자 정의 유전자 세트
 
-This function returns a ggplot object, which can be DIY by users.
+```python
+custom_gene_sets = {
+    "Custom_Pathway_1": ["GENE1", "GENE2", "GENE3"],
+    "Custom_Pathway_2": ["GENE4", "GENE5", "GENE6"]
+}
 
-![Screenshot](https://github.com/wu-yc/scMetabolism/raw/main/scmetab_dot.png)
+sc_metab.gene_sets = custom_gene_sets
+scores = sc_metab._compute_aucell(count_matrix, n_cores=2)
+```
 
-#### Box plot
+## 📖 예제
 
-    BoxPlot.metabolism(obj = countexp.Seurat, pathway = input.pathway, phenotype = "ident", ncol = 1)
+완전한 사용 예제는 `examples/basic_usage.py`를 참조하세요:
 
-`obj` is a Seurat object containing the UMI count matrix. 
+```bash
+python examples/basic_usage.py
+```
 
-`pathway` is the pathway of interest to visualize. 
+## 🧪 테스트
 
-`phenotype` is the one of the features contained in the metadata in the Seurat object.
+```bash
+# 테스트 실행
+pytest tests/
 
-`ncol` refers to the column number per row.
+# 커버리지 포함
+pytest tests/ --cov=scmetabolism
+```
 
-This function returns a ggplot object, which can be DIY by users.
+## 📚 인용
 
-![Screenshot](https://github.com/wu-yc/scMetabolism/raw/main/scmetab_box.png)
+이 패키지를 사용하시면 다음 논문을 인용해 주세요:
 
-### 4. Quantify single-cell metabolism WITHOUT Seurat (Not recommended)
-scMetabolism also supports quantifying metabolism independent of Seurat. 
+**scMetabolism**
+```
+Yingcheng Wu, Shuaixi Yang, Jiaqiang Ma, et al. 
+Spatiotemporal Immune Landscape of Colorectal Cancer Liver Metastasis at Single-Cell Level. 
+Cancer Discovery. 2021.
+```
 
-    metabolism.matrix<-sc.metabolism(countexp = countexp, method = "AUCell", imputation = F, ncores = 2, metabolism.type = "KEGG")
+**알고리즘 및 유전자 세트**
+1. Aibar S, et al. AUCell: predicting transcription factor targets from single-cell RNA-seq data. Nat Methods. 2017.
+2. Hänzelmann S, et al. GSVA: gene set variation analysis for microarray and RNA-seq data. BMC Bioinformatics. 2013.
+3. Linderman GC, et al. Zero-preserving imputation of single-cell RNA-seq data. Nat Commun. 2022.
 
-`countexp` is a data frame of UMI count matrix (col is cell ID, row is gene name). 
+## 🤝 기여하기
 
-`method` supports `VISION`, `AUCell`, `ssgsea`, and `gsva`, which VISION is the default method.
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
+3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
+4. Push to the branch (`git push origin feature/AmazingFeature`)
+5. Open a Pull Request
 
-`imputation` allows users to choose whether impute their data before metabolism scoring.
+## 📄 라이선스
 
-`ncores` is the number of threads of parallel computation.
+이 프로젝트는 GPL-3.0 라이선스 하에 배포됩니다. 자세한 내용은 [LICENSE](LICENSE) 파일을 참조하세요.
 
-`metabolism.type` supports `KEGG` and `REACTOME`, where KEGG contains 85 metabolism pathways and REACTOME contains 82 metabolism pathways.
+## 📞 문의
 
-## Citations
-**_scMetabolism_**
+- **기술적 문의**: [GitHub Issues](https://github.com/your-username/scMetabolism-python/issues)
+- **이메일**: gaoqiang@fudan.edu.cn
 
-- Yingcheng Wu, Shuaixi Yang, Jiaqiang Ma, Zechuan Chen, Guohe Song, Dongning Rao, Yifei Cheng, Siyuan Huang, Yifei Liu, Shan Jiang, Jinxia Liu, Xiaowu Huang, Xiaoying Wang, Shuangjian Qiu, Jianmin Xu, Ruibin Xi, Fan Bai, Jian Zhou, Jia Fan, Xiaoming Zhang, and Qiang Gao. Spatiotemporal Immune Landscape of Colorectal Cancer Liver Metastasis at Single-Cell Level. Cancer Discovery. 2021.
+## 🙏 감사의 말
 
-**_Genesets and algorithms_**
-1. DeTomaso D, et al. Nat Commun. 2019 Sep 26;10(1):4376.
-2. Aibar S, et al. Nat Methods. 2017 Nov;14(11):1083-1086.
-3. Xiao Z, et al. Nat Commun. 2019 Aug 21;10(1):3763.
-4. Hänzelmann S, et al. BMC Bioinformatics. 2013 Jan 16;14:7.
-5. George C. Linderman, et al. bioRxiv 2019.
+Original R package developers:
+- Qiang Gao (gaoqiang@fudan.edu.cn)
+- Yingcheng Wu (wuyc@mail.com)
 
-
-## Online version of scMetabolism
-http://cancerdiversity.asia/scMetabolism/
-
-
-## Contact
-
-Qiang Gao, MD, PhD
-
-Department of Liver Surgery and Transplantation, Liver Cancer Institute, Zhongshan Hospital, Fudan University, Shanghai, China
-
-gaoqiang@fudan.edu.cn
-
-
-Any technical question please contact Yingcheng Wu (yingchengwu21@m.fudan.edu.cn).
-
-Copyright (C) 2020-2023 Gao Lab @ Fudan University.
-
-
-
+Copyright (C) 2020-2024 Gao Lab @ Fudan University.
