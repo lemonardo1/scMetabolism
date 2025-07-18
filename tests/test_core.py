@@ -1,11 +1,11 @@
 """
-Tests for core functionality.
+Tests for core functionality including GO analysis.
 """
 
 import pytest
 import numpy as np
 import pandas as pd
-from scmetabolism import ScMetabolism
+from scmetabolism import ScMetabolism, GOAnalysis
 from scmetabolism.utils import load_gene_sets, alra_imputation
 
 
@@ -101,6 +101,23 @@ class TestScMetabolism:
             )
 
 
+class TestGOAnalysis:
+    """Test GO analysis functionality."""
+    
+    def test_go_analysis_initialization(self):
+        """Test GO analysis initialization."""
+        go_analysis = GOAnalysis(organism="human")
+        assert go_analysis.organism == "human"
+        assert go_analysis.go_annotations is None
+        assert go_analysis.go_terms is None
+    
+    def test_go_analysis_unsupported_organism(self):
+        """Test unsupported organism raises error."""
+        with pytest.raises(ValueError, match="not supported"):
+            go_analysis = GOAnalysis(organism="alien")
+            go_analysis.download_go_annotations()
+
+
 class TestUtils:
     """Test utility functions."""
     
@@ -128,6 +145,11 @@ class TestUtils:
         # Check that zeros are preserved where original was zero
         original_zeros = (data == 0)
         assert (imputed[original_zeros] == 0).all().all()
+    
+    def test_load_gene_sets_invalid_type(self):
+        """Test invalid gene set type raises error."""
+        with pytest.raises(ValueError, match="Unknown metabolism_type"):
+            load_gene_sets("INVALID_TYPE")
 
 
 if __name__ == "__main__":

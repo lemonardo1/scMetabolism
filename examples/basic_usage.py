@@ -1,11 +1,11 @@
 """
-Basic usage example for scMetabolism package.
+Basic usage example for scMetabolism package including GO analysis.
 """
 
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
-from scmetabolism import ScMetabolism, MetabolismPlotter
+from scmetabolism import ScMetabolism, MetabolismPlotter, GOAnalysis
 
 def create_example_data():
     """Create example single-cell RNA-seq data."""
@@ -181,8 +181,55 @@ def main():
     plt.savefig('metabolism_heatmap.png', dpi=300, bbox_inches='tight')
     plt.close()
     
-    # 5. Summary statistics
-    print("\n5. Summary statistics:")
+    # 5. Gene Ontology (GO) Analysis Example
+    print("\n5. Gene Ontology (GO) Analysis Example...")
+    try:
+        # Note: GO analysis requires internet connection and may take time
+        print("   Attempting GO metabolism analysis (requires internet)...")
+        
+        # Initialize GO analysis
+        go_analysis = GOAnalysis(organism="human")
+        
+        # Try to get a small subset of GO metabolism terms for demo
+        # This is a simplified example - in practice you'd use the full GO database
+        print("   Creating mock GO gene sets for demonstration...")
+        
+        # Create mock GO gene sets based on our example genes
+        mock_go_sets = {
+            "glucose metabolic process (biological_process)": ['ALDOA', 'ENO1', 'GAPDH', 'HK1', 'HK2'],
+            "fatty acid metabolic process (biological_process)": ['ACLY', 'FASN', 'SCD'],
+            "oxidative phosphorylation (biological_process)": ['COX1', 'COX2', 'ATP5A1', 'NDUFA1'],
+            "glycolytic process (biological_process)": ['ALDOA', 'ENO1', 'GAPDH', 'PFKL', 'PKM'],
+            "ATP metabolic process (biological_process)": ['ATP5A1', 'HK1', 'HK2', 'PGK1']
+        }
+        
+        # Use mock GO gene sets for analysis
+        sc_metab.gene_sets = mock_go_sets
+        go_scores = sc_metab._compute_aucell(count_matrix, n_cores=2)
+        
+        print(f"   GO analysis completed: {go_scores.shape[0]} GO terms analyzed")
+        
+        # Create GO visualization
+        go_pathways = list(mock_go_sets.keys())[:3]
+        fig = plotter.box_plot(
+            metabolism_scores=go_scores,
+            metadata=metadata,
+            pathways=go_pathways,
+            group_by='cell_type',
+            ncols=1,
+            figsize=(10, 8)
+        )
+        plt.savefig('go_analysis_boxplot.png', dpi=300, bbox_inches='tight')
+        plt.close()
+        
+        print("   GO analysis visualization saved: go_analysis_boxplot.png")
+        
+    except Exception as e:
+        print(f"   GO analysis skipped due to error: {e}")
+        print("   (This is normal if internet connection is not available)")
+    
+    # 6. Summary statistics
+    print("\n6. Summary statistics:")
     print(f"   Total pathways analyzed: {metabolism_scores.shape[0]}")
     print(f"   Total cells analyzed: {metabolism_scores.shape[1]}")
     print(f"   Mean score range: {metabolism_scores.values.min():.3f} - {metabolism_scores.values.max():.3f}")
@@ -201,6 +248,7 @@ def main():
     print("  - metabolism_dotplot.png") 
     print("  - metabolism_dimplot.png")
     print("  - metabolism_heatmap.png")
+    print("  - go_analysis_boxplot.png (if GO analysis succeeded)")
 
 
 if __name__ == "__main__":

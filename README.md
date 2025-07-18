@@ -66,7 +66,7 @@ metabolism_scores = sc_metab.compute_metabolism(
     method="aucell",  # "aucell", "ssgsea", "gsva" 중 선택
     imputation=False,  # ALRA imputation 사용 여부
     n_cores=2,
-    metabolism_type="KEGG"  # "KEGG" 또는 "REACTOME"
+    metabolism_type="KEGG"  # "KEGG", "REACTOME", "GO_metabolism" 등
 )
 
 print(f"계산된 대사 경로 수: {metabolism_scores.shape[0]}")
@@ -140,6 +140,12 @@ fig = plotter.box_plot(
 ### 유전자 세트
 - **KEGG**: 85개 대사 경로
 - **REACTOME**: 82개 대사 경로
+- **Gene Ontology (GO)**: 
+  - GO_metabolism: 대사 관련 GO 용어
+  - GO_BP: 생물학적 과정 (Biological Process)
+  - GO_MF: 분자 기능 (Molecular Function)
+  - GO_CC: 세포 구성요소 (Cellular Component)
+  - GO_all: 모든 GO 용어
 
 ## 🔧 고급 사용법
 
@@ -163,6 +169,40 @@ processed_matrix = preprocess_data(
 from scmetabolism.utils import alra_imputation
 
 imputed_matrix = alra_imputation(count_matrix, k=50)
+```
+
+### Gene Ontology (GO) 분석
+
+```python
+from scmetabolism import GOAnalysis
+
+# GO 분석 객체 생성
+go_analysis = GOAnalysis(organism="human")
+
+# 대사 관련 GO 용어만 사용
+metabolism_scores = sc_metab.compute_metabolism(
+    count_matrix=count_matrix,
+    method="aucell",
+    metabolism_type="GO_metabolism"  # GO 대사 용어
+)
+
+# 생물학적 과정 (Biological Process) 분석
+bp_scores = sc_metab.compute_metabolism(
+    count_matrix=count_matrix,
+    method="aucell", 
+    metabolism_type="GO_BP"
+)
+
+# 직접 GO 유전자 세트 생성
+go_gene_sets = go_analysis.create_go_gene_sets(
+    aspects=["biological_process"],
+    min_genes=10,
+    max_genes=200
+)
+
+# 사용자 정의 GO 분석
+sc_metab.gene_sets = go_gene_sets
+custom_scores = sc_metab._compute_aucell(count_matrix, n_cores=2)
 ```
 
 ### 사용자 정의 유전자 세트

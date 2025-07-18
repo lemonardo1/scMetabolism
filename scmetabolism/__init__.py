@@ -11,10 +11,13 @@ __email__ = "gaoqiang@fudan.edu.cn"
 from .core import ScMetabolism
 from .visualization import MetabolismPlotter
 from .utils import load_gene_sets, preprocess_data
+from .go_analysis import GOAnalysis, download_go_gene_sets
 
 __all__ = [
     "ScMetabolism",
     "MetabolismPlotter", 
     "load_gene_sets",
-    "preprocess_data"
+    "preprocess_data",
+    "GOAnalysis",
+    "download_go_gene_sets"
 ]

@@ -52,7 +52,7 @@ class ScMetabolism:
         n_cores : int, default 2
             Number of cores for parallel processing
         metabolism_type : str, default "KEGG"
-            Type of metabolism gene sets: "KEGG" or "REACTOME"
+            Type of gene sets: "KEGG", "REACTOME", "GO_metabolism", "GO_all", "GO_BP", "GO_MF", "GO_CC"
             
         Returns:
         --------

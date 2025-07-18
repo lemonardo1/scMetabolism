@@ -13,12 +13,19 @@ from typing import Dict, List, Union
 
 def load_gene_sets(metabolism_type: str = "KEGG") -> Dict[str, List[str]]:
     """
-    Load metabolism gene sets from GMT files.
+    Load gene sets from various sources.
     
     Parameters:
     -----------
     metabolism_type : str
-        Type of gene sets: "KEGG" or "REACTOME"
+        Type of gene sets: 
+        - "KEGG": KEGG metabolism pathways
+        - "REACTOME": REACTOME metabolism pathways  
+        - "GO_metabolism": GO metabolism-related terms
+        - "GO_all": All GO terms (BP, MF, CC)
+        - "GO_BP": GO Biological Process
+        - "GO_MF": GO Molecular Function
+        - "GO_CC": GO Cellular Component
         
     Returns:
     --------
@@ -26,34 +33,64 @@ def load_gene_sets(metabolism_type: str = "KEGG") -> Dict[str, List[str]]:
         Dictionary mapping pathway names to gene lists
     """
     
-    if metabolism_type.upper() == "KEGG":
-        gmt_file = "KEGG_metabolism_nc.gmt"
-    elif metabolism_type.upper() == "REACTOME":
-        gmt_file = "REACTOME_metabolism.gmt"
+    # Handle traditional GMT files (KEGG, REACTOME)
+    if metabolism_type.upper() in ["KEGG", "REACTOME"]:
+        if metabolism_type.upper() == "KEGG":
+            gmt_file = "KEGG_metabolism_nc.gmt"
+        else:
+            gmt_file = "REACTOME_metabolism.gmt"
+        
+        # Try to load from package data
+        try:
+            gmt_path = pkg_resources.resource_filename('scmetabolism', f'data/{gmt_file}')
+        except:
+            # Fallback to local data directory
+            gmt_path = os.path.join('data', gmt_file)
+        
+        if not os.path.exists(gmt_path):
+            raise FileNotFoundError(f"Gene set file not found: {gmt_path}")
+        
+        gene_sets = {}
+        
+        with open(gmt_path, 'r') as f:
+            for line in f:
+                parts = line.strip().split('\t')
+                if len(parts) >= 3:
+                    pathway_name = parts[0]
+                    genes = parts[2:]  # Skip description field
+                    gene_sets[pathway_name] = genes
+        
+        return gene_sets
+    
+    # Handle GO gene sets
+    elif metabolism_type.startswith("GO_"):
+        from .go_analysis import download_go_gene_sets
+        
+        # Map metabolism_type to GO analysis parameters
+        go_type_map = {
+            "GO_metabolism": "metabolism",
+            "GO_all": "all", 
+            "GO_BP": "biological_process",
+            "GO_MF": "molecular_function",
+            "GO_CC": "cellular_component"
+        }
+        
+        if metabolism_type not in go_type_map:
+            raise ValueError(f"Unknown GO type: {metabolism_type}")
+        
+        print(f"Downloading GO gene sets: {metabolism_type}")
+        gene_sets = download_go_gene_sets(
+            organism="human",
+            gene_set_type=go_type_map[metabolism_type]
+        )
+        
+        return gene_sets
+    
     else:
-        raise ValueError("metabolism_type must be 'KEGG' or 'REACTOME'")
-    
-    # Try to load from package data
-    try:
-        gmt_path = pkg_resources.resource_filename('scmetabolism', f'data/{gmt_file}')
-    except:
-        # Fallback to local data directory
-        gmt_path = os.path.join('data', gmt_file)
-    
-    if not os.path.exists(gmt_path):
-        raise FileNotFoundError(f"Gene set file not found: {gmt_path}")
-    
-    gene_sets = {}
-    
-    with open(gmt_path, 'r') as f:
-        for line in f:
-            parts = line.strip().split('\t')
-            if len(parts) >= 3:
-                pathway_name = parts[0]
-                genes = parts[2:]  # Skip description field
-                gene_sets[pathway_name] = genes
-    
-    return gene_sets
+        raise ValueError(
+            f"Unknown metabolism_type: {metabolism_type}. "
+            f"Choose from: KEGG, REACTOME, GO_metabolism, GO_all, GO_BP, GO_MF, GO_CC"
+        )
 
 
 def alra_imputation(count_matrix: pd.DataFrame, k: int = None) -> pd.DataFrame:
